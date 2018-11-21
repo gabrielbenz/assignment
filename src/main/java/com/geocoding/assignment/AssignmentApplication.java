@@ -1,4 +1,6 @@
 package com.geocoding.assignment;
+
+import org.apache.activemq.ActiveMQConnectionFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -20,6 +22,12 @@ public class AssignmentApplication {
 		SpringApplication.run(AssignmentApplication.class, args);
 	}
 
+	@Bean
+	public ActiveMQConnectionFactory activeMQConnectionFactory() {
+		ActiveMQConnectionFactory activeMQConnectionFactory = new ActiveMQConnectionFactory();
+		return activeMQConnectionFactory;
+	}
+
 	/**
 	 * Exposes rest api GET method /api/geocode?{address} 
 	 * then publish the json formatted message to a JMS queue 
@@ -34,6 +42,8 @@ public class AssignmentApplication {
 					.requestPayloadType(String.class).payloadExpression("#requestParams['address']")
 				)
 				.transform(Transformers.toJson())
+				.publishSubscribeChannel(subscribers -> subscribers.subscribe(
+						sf -> sf .handle(Jms.outboundGateway(activeMQConnectionFactory()).requestDestination("google.api.geocode.request"))))
 				.get();
 	}
 
